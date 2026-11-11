@@ -45,7 +45,7 @@ jobs:
             echo "DAGSHUB_TOKEN secret is missing"
             exit 1
           fi
-
+          dvc remote modify --local origin auth basic
           dvc remote modify --local origin user rithikka135
           dvc remote modify --local origin password "$DAGSHUB_TOKEN"
 
