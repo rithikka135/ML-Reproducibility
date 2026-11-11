@@ -3,7 +3,8 @@ name: Reproducible ML with DVC and CML
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -15,40 +16,67 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Get the GitHub repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: Install Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      # Step 3: Set up CML
       - name: Set up CML
         uses: iterative/setup-cml@v2
 
+      # Step 4: Install project dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Step 5: Download the original dataset and run DVC pipeline
       - name: Download data and reproduce pipeline
         env:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
+          if [ -z "$DAGSHUB_TOKEN" ]; then
+            echo "DAGSHUB_TOKEN secret is missing"
+            exit 1
+          fi
+
           dvc remote modify --local origin user rithikka135
           dvc remote modify --local origin password "$DAGSHUB_TOKEN"
-          dvc pull
+
+          dvc pull data/iris.csv.dvc
           dvc repro
 
+      # Step 6: Generate metrics and parameter comparison report
       - name: Generate metrics report
         run: |
-          git fetch origin main
-          echo "# ML Experiment Report" > report.md
-          echo "## Metrics comparison" >> report.md
-          dvc metrics diff main --md >> report.md
-          echo "## Parameters comparison" >> report.md
-          dvc params diff main --md >> report.md
+          git fetch origin main:refs/remotes/origin/main
 
+          echo "# Machine Learning Experiment Report" > report.md
+          echo "" >> report.md
+
+          echo "## Model Evaluation Metrics" >> report.md
+          dvc metrics diff origin/main --md >> report.md
+
+          echo "" >> report.md
+          echo "## Model Parameters Comparison" >> report.md
+          dvc params diff origin/main --md >> report.md
+
+          echo "" >> report.md
+          echo "## Experiment Details" >> report.md
+          echo "- Model: Random Forest Classifier" >> report.md
+          echo "- Dataset: Iris Dataset" >> report.md
+          echo "- Pipeline: DVC" >> report.md
+          echo "- Automation: GitHub Actions and CML" >> report.md
+
+          cat report.md
+
+      # Step 7: Post the report as a pull request comment
       - name: Post CML report
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
