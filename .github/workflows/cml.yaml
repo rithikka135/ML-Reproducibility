@@ -52,16 +52,42 @@ jobs:
           dvc pull data/iris.csv.dvc
           dvc repro
 
+     
       # Step 6: Generate metrics and parameter comparison report
       - name: Generate metrics report
         run: |
           git fetch origin main:refs/remotes/origin/main
 
+          # Create report
           echo "# Machine Learning Experiment Report" > report.md
           echo "" >> report.md
 
           echo "## Model Evaluation Metrics" >> report.md
-          dvc metrics diff origin/main --md >> report.md
+          echo "| Metric | Baseline (main) | New Experiment (PR) |" >> report.md
+          echo "|---|---:|---:|" >> report.md
+
+          python - <<'PY'
+          import json
+          import subprocess
+
+          baseline = json.loads(
+              subprocess.check_output(
+                  ["git", "show", "origin/main:reports/metrics.json"]
+              )
+          )
+
+          with open("reports/metrics.json") as f:
+              current = json.load(f)
+
+          metrics = ["accuracy", "precision", "recall", "f1_score"]
+
+          with open("report.md", "a") as report:
+              for metric in metrics:
+                  report.write(
+                      f"| {metric} | {baseline[metric]:.4f} | "
+                      f"{current[metric]:.4f} |\n"
+                  )
+          PY
 
           echo "" >> report.md
           echo "## Model Parameters Comparison" >> report.md
@@ -71,10 +97,13 @@ jobs:
           echo "## Experiment Details" >> report.md
           echo "- Model: Random Forest Classifier" >> report.md
           echo "- Dataset: Iris Dataset" >> report.md
+          echo "- Baseline: 150 estimators" >> report.md
+          echo "- New experiment: 200 estimators" >> report.md
           echo "- Pipeline: DVC" >> report.md
           echo "- Automation: GitHub Actions and CML" >> report.md
 
           cat report.md
+
 
       # Step 7: Post the report as a pull request comment
       - name: Post CML report
