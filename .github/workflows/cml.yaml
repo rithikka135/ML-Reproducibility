@@ -47,7 +47,7 @@ jobs:
           echo "## Metrics comparison" >> report.md
           dvc metrics diff main --md >> report.md
           echo "## Parameters comparison" >> report.md
-          dvc params diff --md >> report.md
+          dvc params diff main --md >> report.md
 
       - name: Post CML report
         env:
